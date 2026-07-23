@@ -19,7 +19,7 @@ run_after_sync-wayground-math-quiz.cmd.tmpl
 `run_after` 內容：
 
 ```bat
-@powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.local\bin\sync-wayground-math-quiz.ps1"
+@pwsh.exe -NoProfile -File "%USERPROFILE%\.local\bin\sync-wayground-math-quiz.ps1"
 ```
 
 如此一來，新電腦第一次執行 `chezmoi apply` 會安裝；日後執行 `chezmoi update` 或 `chezmoi apply` 會檢查 GitHub 更新並同步四端。
