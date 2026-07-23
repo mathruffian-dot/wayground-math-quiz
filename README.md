@@ -54,6 +54,8 @@ pwsh -NoProfile -File ".\scripts\sync-four-agents.ps1"
 
 安裝後請重新啟動或重新載入 agent。完整說明見 [跨代理人安裝](docs/cross-agent-installation.md)。
 
+若使用 chezmoi 管理多台電腦，見 [Chezmoi 自動安裝與升級](docs/chezmoi-installation.md)。
+
 ## 快速建立一份測驗
 
 ```powershell
