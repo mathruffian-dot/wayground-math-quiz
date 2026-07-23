@@ -1,0 +1,121 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "minimal-text-quiz",
+  "title": "公開範例｜四題基礎運算",
+  "subject": "數學",
+  "grade": {
+    "start": 7,
+    "end": 7
+  },
+  "language": "zh-TW",
+  "settings": {
+    "shuffleQuestions": false,
+    "shuffleOptions": false,
+    "balancedAnswerPositions": true
+  },
+  "sourceDocuments": [
+    {
+      "id": "demo-source",
+      "name": "original-example-created-for-this-repository",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q001",
+      "type": "text-mcq",
+      "cognitiveLevel": "記憶理解",
+      "stem": {
+        "type": "text",
+        "text": "計算 2 + 3。",
+        "latex": "2+3"
+      },
+      "options": [
+        { "id": "A", "content": "5" },
+        { "id": "B", "content": "4" },
+        { "id": "C", "content": "6" },
+        { "id": "D", "content": "7" }
+      ],
+      "correctOptionIds": ["A"],
+      "source": {
+        "documentId": "demo-source",
+        "page": 1,
+        "reference": "Original public example q001"
+      },
+      "explanation": "2 + 3 = 5。",
+      "tags": ["公開範例", "整數運算"]
+    },
+    {
+      "id": "q002",
+      "type": "text-mcq",
+      "cognitiveLevel": "記憶理解",
+      "stem": {
+        "type": "text",
+        "text": "計算 -4 + 7。",
+        "latex": "-4+7"
+      },
+      "options": [
+        { "id": "A", "content": "-3" },
+        { "id": "B", "content": "3" },
+        { "id": "C", "content": "11" },
+        { "id": "D", "content": "-11" }
+      ],
+      "correctOptionIds": ["B"],
+      "source": {
+        "documentId": "demo-source",
+        "page": 1,
+        "reference": "Original public example q002"
+      },
+      "explanation": "-4 + 7 = 3。",
+      "tags": ["公開範例", "整數運算"]
+    },
+    {
+      "id": "q003",
+      "type": "text-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "text",
+        "text": "溫度從 -2°C 上升 5°C，現在是幾°C？",
+        "latex": "-2+5"
+      },
+      "options": [
+        { "id": "A", "content": "-7°C" },
+        { "id": "B", "content": "-3°C" },
+        { "id": "C", "content": "3°C" },
+        { "id": "D", "content": "7°C" }
+      ],
+      "correctOptionIds": ["C"],
+      "source": {
+        "documentId": "demo-source",
+        "page": 1,
+        "reference": "Original public example q003"
+      },
+      "explanation": "-2 + 5 = 3，所以現在是 3°C。",
+      "tags": ["公開範例", "生活情境"]
+    },
+    {
+      "id": "q004",
+      "type": "text-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "text",
+        "text": "海拔 6 公尺的位置下降 10 公尺後，海拔是多少公尺？",
+        "latex": "6-10"
+      },
+      "options": [
+        { "id": "A", "content": "16 公尺" },
+        { "id": "B", "content": "4 公尺" },
+        { "id": "C", "content": "-16 公尺" },
+        { "id": "D", "content": "-4 公尺" }
+      ],
+      "correctOptionIds": ["D"],
+      "source": {
+        "documentId": "demo-source",
+        "page": 1,
+        "reference": "Original public example q004"
+      },
+      "explanation": "6 - 10 = -4，所以海拔是 -4 公尺。",
+      "tags": ["公開範例", "生活情境"]
+    }
+  ]
+}

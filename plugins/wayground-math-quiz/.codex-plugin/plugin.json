@@ -1,0 +1,23 @@
+{
+  "name": "wayground-math-quiz",
+  "version": "0.2.0",
+  "description": "Create traceable image-first Wayground math quizzes from Word or PDF source papers.",
+  "author": {
+    "name": "三師爸"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Wayground 數學圖片出題",
+    "shortDescription": "從 Word/PDF 裁切、驗證並準備 Wayground 數學題",
+    "longDescription": "將 Word 或 PDF 原始卷轉為高解析題目圖片、canonical quiz.json、離線預覽與 Wayground 發布計畫，並保留來源與驗證紀錄。",
+    "developerName": "三師爸",
+    "category": "Education",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "從這份 Word/PDF 建立圖片式 Wayground 數學測驗。",
+      "檢查這份 quiz.json 的答案分布與圖片資產。",
+      "產生 Wayground 圖片題發布計畫與離線預覽。"
+    ]
+  }
+}

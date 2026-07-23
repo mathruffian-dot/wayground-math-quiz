@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "wayground-math-quiz": {
+      "title": "Wayground Math Quiz",
+      "description": "Ingest, crop, validate, preview, and package image-first math quizzes.",
+      "cwd": ".",
+      "command": "node",
+      "args": [
+        "./mcp/server.mjs"
+      ]
+    }
+  }
+}

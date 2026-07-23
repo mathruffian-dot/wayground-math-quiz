@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wayground 數學圖片出題"
+  short_description: "從 Word/PDF 裁切數學題並發布至 Wayground"
+  default_prompt: "Use $wayground-math-quiz to turn a Word or PDF math test into a validated image-first Wayground quiz."

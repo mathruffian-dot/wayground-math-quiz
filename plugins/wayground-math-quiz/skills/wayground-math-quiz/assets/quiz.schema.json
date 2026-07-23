@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/wayground-math-quiz/quiz.schema.json",
+  "title": "Wayground Math Quiz",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "id",
+    "title",
+    "subject",
+    "grade",
+    "language",
+    "settings",
+    "sourceDocuments",
+    "questions"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "subject": { "type": "string", "minLength": 1 },
+    "grade": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": ["integer", "string"] },
+        "end": { "type": ["integer", "string"] }
+      }
+    },
+    "language": { "type": "string", "minLength": 2 },
+    "settings": {
+      "type": "object",
+      "required": [
+        "shuffleQuestions",
+        "shuffleOptions",
+        "balancedAnswerPositions"
+      ],
+      "properties": {
+        "shuffleQuestions": { "type": "boolean" },
+        "shuffleOptions": { "type": "boolean" },
+        "balancedAnswerPositions": { "type": "boolean" }
+      }
+    },
+    "sourceDocuments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "sha256"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/question" }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "cognitiveLevel",
+        "stem",
+        "options",
+        "correctOptionIds",
+        "source"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["image-mcq", "text-mcq"] },
+        "cognitiveLevel": { "type": "string", "minLength": 1 },
+        "stem": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": { "enum": ["image", "text"] },
+            "image": { "type": "string" },
+            "alt": { "type": "string" },
+            "text": { "type": "string" },
+            "latex": { "type": "string" }
+          }
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "content"],
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "latex": { "type": "string" },
+              "image": { "type": "string" }
+            }
+          }
+        },
+        "correctOptionIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "source": {
+          "type": "object",
+          "required": ["documentId"],
+          "properties": {
+            "documentId": { "type": "string" },
+            "page": { "type": "integer", "minimum": 1 },
+            "bbox": { "type": "object" },
+            "reference": { "type": "string" }
+          }
+        },
+        "explanation": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

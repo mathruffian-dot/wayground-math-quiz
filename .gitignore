@@ -1,0 +1,52 @@
+# Private workspace data
+/出題紀錄/
+/Wayground/
+/素材/
+/索引/
+/.agents/
+/出題索引.md
+/專案工作流程.md
+/最新出題版本.md
+/handoff.md
+
+# Local-only instructions and configuration
+*.local.*
+AGENTS.local.md
+README.local.md
+config/local.json
+
+# Runtime and editor artifacts
+**/node_modules/
+**/__pycache__/
+**/.pytest_cache/
+**/.playwright-cli/
+*.pyc
+*.pyo
+*.log
+*.tmp
+*.bak
+*.backup-*
+*.failed-*
+*.staged-*
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*apikey*
+*api_key*
+*credentials*
+*cookies*
+*session*
+
+# Generated quiz jobs and evidence
+quiz-jobs/
+jobs/
+output/
+evidence/
+publication-evidence.json
+publication-verification.json

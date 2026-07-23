@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "defaults": {
+    "dpi": 220,
+    "subject": "數學",
+    "language": "zh-TW",
+    "shuffleQuestions": false,
+    "shuffleOptions": false,
+    "balancedAnswerPositions": true
+  },
+  "runtime": {
+    "python": "",
+    "pdftoppm": ""
+  },
+  "publishing": {
+    "preferredAdapter": "wayground-browser",
+    "storeBrowserSession": false
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "wayground-math-quiz-cli",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Portable CLI for image-first Wayground math quiz production",
+  "bin": {
+    "wayground-math-quiz": "./scripts/quiz.mjs"
+  },
+  "scripts": {
+    "doctor": "node scripts/quiz.mjs doctor",
+    "mcp:server": "node mcp/server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
