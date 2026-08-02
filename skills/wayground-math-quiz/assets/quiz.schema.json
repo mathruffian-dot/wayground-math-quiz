@@ -100,7 +100,8 @@
               "id": { "type": "string" },
               "content": { "type": "string" },
               "latex": { "type": "string" },
-              "image": { "type": "string" }
+              "image": { "type": "string" },
+              "imageAlt": { "type": "string" }
             }
           }
         },
@@ -119,6 +120,7 @@
             "reference": { "type": "string" }
           }
         },
+        "visualSpec": { "type": "string" },
         "explanation": { "type": "string" },
         "tags": {
           "type": "array",

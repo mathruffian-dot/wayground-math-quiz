@@ -6,7 +6,7 @@ import { dirname, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-const SERVER_VERSION = "0.1.1";
+const SERVER_VERSION = "0.2.0";
 const PROTOCOL_VERSION = "2025-06-18";
 const MCP_DIR = dirname(fileURLToPath(import.meta.url));
 const CLI_CANDIDATES = [
@@ -105,6 +105,76 @@ const TOOLS = [
         gradeEnd: numberProperty("Highest grade level."),
         language: stringProperty("BCP-47 language code, normally zh-TW."),
         force: booleanProperty("Replace an existing quiz.json."),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "wayground_visual_init",
+    description:
+      "Create a visual-spec JSON template for a deterministic, source-crop, or AI-composite math question.",
+    inputSchema: {
+      type: "object",
+      required: ["outputPath"],
+      properties: {
+        outputPath: stringProperty("visual-spec.json output path."),
+        id: stringProperty("Stable question ID."),
+        title: stringProperty("Visual-question title."),
+        mode: {
+          type: "string",
+          enum: ["deterministic", "source-crop", "ai-composite"],
+        },
+        width: numberProperty("Canvas width, normally 1200."),
+        height: numberProperty("Canvas height, normally 900."),
+        force: booleanProperty("Replace an existing generated spec."),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "wayground_visual_compose",
+    description:
+      "Render a reviewed visual-spec JSON file into a deterministic screen-ready PNG.",
+    inputSchema: {
+      type: "object",
+      required: ["specPath", "outputPath"],
+      properties: {
+        specPath: stringProperty("visual-spec.json path."),
+        outputPath: stringProperty("Final PNG output path."),
+        python: stringProperty("Optional absolute path to Python."),
+        force: booleanProperty("Replace an existing generated PNG."),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "wayground_visual_validate",
+    description:
+      "Validate locked math facts, AI provenance, assets, review flags, and final image dimensions.",
+    inputSchema: {
+      type: "object",
+      required: ["specPath"],
+      properties: {
+        specPath: stringProperty("visual-spec.json path."),
+        imagePath: stringProperty("Optional final PNG path."),
+        python: stringProperty("Optional absolute path to Python."),
+        strict: booleanProperty("Require completed math, visual, and ambiguity review."),
+        reportPath: stringProperty("Optional JSON validation report path."),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "wayground_visual_prompt_pack",
+    description:
+      "Export the selected AI prompt, locked facts, and deterministic overlay handoff notes.",
+    inputSchema: {
+      type: "object",
+      required: ["specPath", "outputPath"],
+      properties: {
+        specPath: stringProperty("visual-spec.json path."),
+        outputPath: stringProperty("Markdown prompt-pack output path."),
+        force: booleanProperty("Replace an existing prompt pack."),
       },
       additionalProperties: false,
     },
@@ -252,6 +322,47 @@ function buildCliCall(toolName, args = {}) {
       addValue(result, "--grade-start", args.gradeStart);
       addValue(result, "--grade-end", args.gradeEnd);
       addValue(result, "--language", args.language);
+      addBoolean(result, "--force", args.force);
+      return result;
+    }
+    case "wayground_visual_init": {
+      const result = ["visual-init", "--out", requireString(args, "outputPath")];
+      addValue(result, "--id", args.id);
+      addValue(result, "--title", args.title);
+      addValue(result, "--mode", args.mode);
+      addValue(result, "--width", args.width);
+      addValue(result, "--height", args.height);
+      addBoolean(result, "--force", args.force);
+      return result;
+    }
+    case "wayground_visual_compose": {
+      const result = [
+        "compose",
+        "--spec",
+        requireString(args, "specPath"),
+        "--out",
+        requireString(args, "outputPath"),
+      ];
+      addValue(result, "--python", args.python);
+      addBoolean(result, "--force", args.force);
+      return result;
+    }
+    case "wayground_visual_validate": {
+      const result = ["visual-validate", "--spec", requireString(args, "specPath")];
+      addValue(result, "--image", args.imagePath);
+      addValue(result, "--python", args.python);
+      addBoolean(result, "--strict", args.strict);
+      addValue(result, "--report", args.reportPath);
+      return result;
+    }
+    case "wayground_visual_prompt_pack": {
+      const result = [
+        "prompt-pack",
+        "--spec",
+        requireString(args, "specPath"),
+        "--out",
+        requireString(args, "outputPath"),
+      ];
       addBoolean(result, "--force", args.force);
       return result;
     }
@@ -416,7 +527,7 @@ async function handle(message) {
               version: SERVER_VERSION,
             },
             instructions:
-              "Use quiz.json as the source of truth. Validate strictly before creating a publication plan. Image questions require the browser adapter.",
+              "Use quiz.json as the quiz source of truth and visual-spec.json for designed visual questions. Keep AI limited to narrative backgrounds, validate strictly, and use the browser adapter for images.",
           });
         }
         return;

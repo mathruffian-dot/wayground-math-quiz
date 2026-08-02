@@ -9,6 +9,8 @@ $coreSkill = Join-Path $RepositoryRoot 'skills\wayground-math-quiz'
 $pluginSkill = Join-Path $RepositoryRoot 'plugins\wayground-math-quiz\skills\wayground-math-quiz'
 $cli = Join-Path $coreSkill 'scripts\quiz.mjs'
 $exampleQuiz = Join-Path $RepositoryRoot 'examples\minimal-text-quiz\quiz.json'
+$visualExampleRoot = Join-Path $RepositoryRoot 'examples\visual-question-factory'
+$visualExampleQuiz = Join-Path $visualExampleRoot 'quiz.json'
 
 function Get-TreeManifestText {
     param([Parameter(Mandatory)][string]$Path)
@@ -33,7 +35,12 @@ $required = @(
     'skills\wayground-math-quiz\SKILL.md',
     'plugins\wayground-math-quiz\.codex-plugin\plugin.json',
     'scripts\sync-four-agents.ps1',
-    'examples\minimal-text-quiz\quiz.json'
+    'examples\minimal-text-quiz\quiz.json',
+    'docs\visual-question-factory.md',
+    'scripts\build-visual-sharing-pack.ps1',
+    'skills\wayground-math-quiz\assets\visual-spec.schema.json',
+    'skills\wayground-math-quiz\references\visual-question-factory.md',
+    'examples\visual-question-factory\quiz.json'
 )
 
 foreach ($relative in $required) {
@@ -123,6 +130,87 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $tempRoot 'preview.html') -PathType Leaf)) {
         throw '最小範例未產生 preview.html。'
     }
+
+    $visualFolders = Get-ChildItem -LiteralPath (Join-Path $visualExampleRoot 'visual') -Directory | Sort-Object Name
+    if ($visualFolders.Count -ne 6) {
+        throw "視覺題示範預期六題，實際為 $($visualFolders.Count) 題。"
+    }
+    foreach ($folder in $visualFolders) {
+        $spec = Join-Path $folder.FullName 'visual-spec.json'
+        $expectedImage = Join-Path $folder.FullName 'final.png'
+        $renderedImage = Join-Path $tempRoot "$($folder.Name)-final.png"
+        $visualReport = Join-Path $tempRoot "$($folder.Name)-visual-validation.json"
+        & node $cli compose --spec $spec --out $renderedImage
+        if ($LASTEXITCODE -ne 0) {
+            throw "視覺題 compose 失敗：$($folder.Name)"
+        }
+        & node $cli visual-validate --spec $spec --image $renderedImage --strict --report $visualReport
+        if ($LASTEXITCODE -ne 0) {
+            throw "視覺題 strict validation 失敗：$($folder.Name)"
+        }
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $renderedImage).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $expectedImage).Hash) {
+            throw "視覺題重製雜湊不一致：$($folder.Name)"
+        }
+    }
+
+    & node $cli validate --quiz $visualExampleQuiz --strict --report (Join-Path $tempRoot 'visual-quiz-validation.json')
+    if ($LASTEXITCODE -ne 0) {
+        throw '六題視覺範例 strict validation 失敗。'
+    }
+    & node $cli preview --quiz $visualExampleQuiz --out (Join-Path $tempRoot 'visual-preview.html')
+    if ($LASTEXITCODE -ne 0) {
+        throw '六題視覺範例 preview 失敗。'
+    }
+
+    $browserPlan = Join-Path $tempRoot 'wayground-browser.json'
+    $publicationState = Join-Path $tempRoot 'publication-state.json'
+    $publicationEvidence = Join-Path $tempRoot 'publication-evidence.json'
+    $visualQuizData = Get-Content -LiteralPath $visualExampleQuiz -Raw | ConvertFrom-Json
+    & node $cli publish --adapter wayground-browser --quiz $visualExampleQuiz --out $browserPlan --state $publicationState
+    if ($LASTEXITCODE -ne 0) {
+        throw '瀏覽器發布計畫與狀態產生失敗。'
+    }
+    & node $cli publication-state --action authorize --state $publicationState --resource-only true --account-confirmed true
+    if ($LASTEXITCODE -ne 0) {
+        throw '資源發布授權狀態設定失敗。'
+    }
+    for ($index = 0; $index -lt $visualQuizData.questions.Count; $index += 1) {
+        $question = $visualQuizData.questions[$index]
+        $questionScreenshot = Join-Path $visualExampleRoot ("visual\{0}\final.png" -f $question.id)
+        & node $cli publication-state --action mark --state $publicationState --question $question.id --observed-count ($index + 1) --image-loaded true --answer-confirmed true --screenshot $questionScreenshot
+        if ($LASTEXITCODE -ne 0) {
+            throw "發布檢查點失敗：$($question.id)"
+        }
+    }
+    $resourceUrl = 'https://wayground.com/activity/admin/quiz/' + ('0' * 24)
+    $overviewScreenshot = Join-Path $visualExampleRoot 'visual\q001\final.png'
+    $representativeScreenshot = Join-Path $visualExampleRoot 'visual\q002\final.png'
+    & node $cli publication-state --action finalize --state $publicationState --resource-url $resourceUrl --observed-title $visualQuizData.title --question-count $visualQuizData.questions.Count --reopened true --images-loaded true --answers-confirmed true --overview-screenshot $overviewScreenshot --question-screenshot $representativeScreenshot --out $publicationEvidence
+    if ($LASTEXITCODE -ne 0) {
+        throw '發布證據產生失敗。'
+    }
+    & node $cli verify --quiz $visualExampleQuiz --evidence $publicationEvidence
+    if ($LASTEXITCODE -ne 0) {
+        throw '完整發布證據應通過驗證。'
+    }
+
+    $invalidEvidencePath = Join-Path $tempRoot 'invalid-publication-evidence.json'
+    $invalidEvidence = [ordered]@{
+        schemaVersion = '1.0.0'
+        resourceUrl = 'https://wayground.com/admin/my-library/createdByMe?activityStatus=draft'
+        questionCount = $visualQuizData.questions.Count
+        verifiedAt = (Get-Date).ToUniversalTime().ToString('o')
+        screenshots = @($overviewScreenshot, $overviewScreenshot)
+    }
+    [System.IO.File]::WriteAllText(
+        $invalidEvidencePath,
+        (($invalidEvidence | ConvertTo-Json -Depth 8) + "`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    $null = & node $cli verify --quiz $visualExampleQuiz --evidence $invalidEvidencePath 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        throw '草稿清單 URL 與重複截圖不應通過發布驗證。'
+    }
 }
 finally {
     $resolvedTemp = (Resolve-Path -LiteralPath $tempRoot).Path
@@ -133,4 +221,6 @@ finally {
 }
 
 Write-Output 'EXAMPLE_VALIDATION_OK'
+Write-Output 'VISUAL_EXAMPLE_VALIDATION_OK'
+Write-Output 'PUBLICATION_STATE_VALIDATION_OK'
 Write-Output 'REPOSITORY_OK'

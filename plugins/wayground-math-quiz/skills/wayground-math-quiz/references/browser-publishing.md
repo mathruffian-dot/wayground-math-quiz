@@ -1,72 +1,150 @@
 # Browser publishing protocol
 
-Use this protocol only after strict validation passes and the user has authorized publishing.
+Use this protocol only after strict validation passes and the user authorizes resource publication.
 
 ## Safety boundary
 
-- Use the user's already logged-in browser session.
-- Never export or copy cookies, local storage, passwords, or browser-profile folders.
-- Never put account data in `quiz.json`.
-- Do not publish student names or response records.
-- Create a new resource unless the user clearly identifies an existing resource to edit.
-- Stop before any paid upgrade, public-visibility change, class assignment, live session, or deletion unless explicitly authorized.
+- Control an already open, logged-in browser surface provided by the agent environment.
+- Do not call `launch_persistent_context`, open the user's default browser profile a second time, copy a profile, or store session data in the job.
+- If the controlled browser is signed out, pause and ask the user to sign in there. Do not switch to a blank temporary profile and claim it is equivalent.
+- Create a new resource unless the user identifies an existing resource to edit.
+- Do not create an assignment, start a live session, change public visibility, send notifications, or delete resources without explicit authorization.
 
-## Why the browser adapter is agent-driven
+## Interaction rules
 
-Wayground's editor UI may change. Hard-coded selectors become unsafe and brittle. Use fresh accessibility snapshots and visible labels for each run. The generated `wayground-browser.json` is the stable input; UI references are temporary.
+Wayground's editor is stateful and changes over time. Before every major action, inspect the current visible page or accessibility tree.
 
-## Publishing sequence
+- Locate controls by current visible label, role, and nearby context. Do not depend on a selector discovered in an older run.
+- Dismiss onboarding and help dialogs through their visible Close, Skip, Got it, or equivalent control.
+- Never remove `#layer-*`, `.v-popper`, `.modal-backdrop`, or other DOM nodes. They may contain the active dialog and its Save action.
+- Never use forced clicks to bypass an overlay. A blocked click means the current UI state has not been handled.
+- Trigger file upload only from the visible image-upload workflow. Confirm the preview and click the modal's visible Save action before continuing.
+- After saving a question, wait until the resource overview visibly reports the expected question count. Do not infer success from a click or toast alone.
 
-1. Open Wayground in the logged-in browser.
-2. Create an Assessment/Quiz from scratch.
-3. Set the title, subject, grade, and language from the plan.
-4. For each question in order:
-   1. Add a multiple-choice question.
-   2. Upload the exact local image in `question.image`.
-   3. Use a short prompt such as `請看圖作答。` only if the editor requires text.
-   4. Enter the fixed choices `A`, `B`, `C`, `D`.
-   5. Mark the correct choice from `correctAnswerIndices`.
-   6. Save the question.
-   7. Confirm the displayed thumbnail before continuing.
-5. Publish/save the resource.
-6. Ensure answer-option shuffle is off for the intended session or assignment.
-   - The resource editor does not expose a resource-wide shuffle switch.
-   - In the assignment/homework setup, both `隨機出題` and `隨機播放答案` may default to on.
-   - Turn both switches off before clicking the final Assign/Start button when image questions contain printed `A/B/C/D` choices.
-   - If the user authorized resource publication but not a class assignment or live session, inspect and capture the settings, then exit without assigning. Re-check both switches when a real assignment or session is created later.
-7. Re-open the resource and verify it rather than trusting the save confirmation.
+## Initialize a checkpointed run
 
-Take a fresh browser snapshot before using any element reference. If a button, uploader, or editor is ambiguous, inspect the current page and proceed by visible label; do not guess coordinates.
+Generate a fresh browser plan and matching publication state in one command. The plan records strict-validation time, `quiz.json` and image hashes, explicit answer IDs, and the exact state-file path:
 
-## Image fit check
+```powershell
+$job = ".\jobs\unit-01"
+$cli = ".\skills\wayground-math-quiz\scripts\quiz.mjs"
 
-Wayground may serve preview images inside an approximately 400 px media box. Very wide worksheet screenshots can become too small to read even when the source crop is correct.
+node $cli publish `
+  --adapter wayground-browser `
+  --quiz "$job\quiz.json" `
+  --out "$job\export\wayground-browser.json" `
+  --state "$job\publication-state.json" `
+  --force
+```
 
-- Inspect the student preview after upload, not only the editor thumbnail.
-- If the image is too wide, create a screen-optimized variant by rearranging exact screenshot fragments into a less extreme aspect ratio.
-- Do not retype, redraw, paraphrase, or alter mathematical content while making the screen variant.
-- Keep the original crop beside the screen variant for provenance, and make `quiz.json` point to the exact image that was published.
+If `publication-state.json` already exists, inspect it first. Resume at the first `pending` question instead of creating another resource.
 
-## Required verification
+## Publishing state machine
 
-Compare the saved resource with `quiz.json`:
+### 1. Confirm authentication
 
-- title, subject, grade, and language;
-- exact question count and order;
-- every question image loads and is readable;
-- all four answer labels are present in fixed order;
-- each correct answer matches the canonical JSON;
-- no crop contains an answer-key mark;
-- answer shuffling is off where the session requires fixed image choices.
+1. Open Wayground in the controlled browser.
+2. Confirm the teacher dashboard is visible and the expected account is active.
+3. If redirected to login, stop for user sign-in.
+4. Confirm that the user's current request explicitly authorizes creating a resource, then record the boundary:
 
-Capture at least one overview screenshot and one representative question screenshot. Record the final URL, count, settings, timestamp, and screenshot paths in `publication-evidence.json`, then run the CLI `verify` command.
+```powershell
+node $cli publication-state `
+  --action authorize `
+  --state "$job\publication-state.json" `
+  --resource-only true `
+  --account-confirmed true
+```
+
+This authorizes resource creation only. It does not authorize an assignment or live session.
+
+### 2. Create and identify the resource
+
+1. Create an Assessment/Quiz from scratch through visible UI controls.
+2. Enter the canonical title.
+3. Blur or confirm the title, then re-read it from the editor header.
+4. Once the URL identifies a specific quiz or assessment, retain that URL in later checkpoints.
+
+A dashboard, login page, create page, or My Library draft-list URL is not a resource URL.
+
+### 3. Save one question atomically
+
+For each plan question in order:
+
+1. Inspect the current editor state.
+2. Add a multiple-choice question.
+3. Upload the exact `question.image` through the visible media dialog.
+4. Confirm the image preview, then click the dialog's Save action.
+5. Enter fixed choices `A`, `B`, `C`, `D`.
+6. Mark the answer from `correctAnswerIds`; use `correctAnswerIndices` only as a zero-based cross-check.
+7. Save the question.
+8. Return to the question overview and confirm all of the following:
+   - the displayed question count increased to `expectedQuestionCountAfterSave`;
+   - the new question thumbnail is present and its image loaded;
+   - the correct option matches the plan.
+9. Capture a post-save screenshot and record the checkpoint:
+
+```powershell
+node $cli publication-state `
+  --action mark `
+  --state "$job\publication-state.json" `
+  --question "q001" `
+  --observed-count 1 `
+  --image-loaded true `
+  --answer-confirmed true `
+  --screenshot "$job\evidence\q001-saved.png" `
+  --resource-url "<current resource-specific URL>"
+```
+
+Do not start the next question unless this command succeeds. The command rejects skipped questions and count mismatches.
+
+### 4. Publish and re-open
+
+After every question is checkpointed:
+
+1. Click the visible Publish action and complete only the resource metadata required to save.
+2. Do not proceed into assignment or live-session creation.
+3. Open the saved resource again from its resource-specific URL.
+4. Confirm exact title, count, order, images, and correct answers against `quiz.json`.
+5. Capture two different images:
+   - an overview showing the saved resource and question count;
+   - a representative question showing its loaded image and answer state.
+
+Finalize evidence:
+
+```powershell
+node $cli publication-state `
+  --action finalize `
+  --state "$job\publication-state.json" `
+  --resource-url "<resource-specific URL>" `
+  --observed-title "<exact canonical title>" `
+  --question-count 10 `
+  --reopened true `
+  --images-loaded true `
+  --answers-confirmed true `
+  --overview-screenshot "$job\evidence\published-overview.png" `
+  --question-screenshot "$job\evidence\published-question.png" `
+  --out "$job\publication-evidence.json" `
+  --force
+
+node $cli verify `
+  --quiz "$job\quiz.json" `
+  --evidence "$job\publication-evidence.json"
+```
+
+`verify` rejects list/dashboard URLs, missing per-question checkpoints, wrong title/order/count, unconfirmed images or answers, and duplicate screenshots.
 
 ## Recovery
 
-If publication stops midway:
+When an interaction fails:
 
-1. Do not restart blindly.
-2. Inspect the resource and count saved questions.
-3. Compare saved question IDs/order with the browser plan.
-4. Continue from the first missing question or create a fresh resource if the partial state cannot be verified.
-5. Record the abandoned resource URL in job notes so another agent does not mistake it for the final version.
+1. Stop at the current state; do not force-click or delete DOM layers.
+2. Inspect the editor and `publication-state.json`.
+3. Count the questions actually saved in Wayground.
+4. Resume from the first `pending` question only when the visible count equals the last saved checkpoint.
+5. If the remote resource count and checkpoint disagree, stop and reconcile before adding anything.
+6. If a partial resource cannot be verified, record its URL as abandoned and create a fresh resource. Do not overwrite successful evidence with the abandoned URL.
+
+## Session settings
+
+Answer and question shuffling belong to assignment or live-session setup, not resource publication. For image questions with printed choices, turn both off when a session is later created. If only resource publication is authorized, exit without assigning or starting.

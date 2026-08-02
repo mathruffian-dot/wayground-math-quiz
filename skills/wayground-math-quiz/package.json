@@ -1,6 +1,6 @@
 {
   "name": "wayground-math-quiz-cli",
-  "version": "0.2.0",
+  "version": "0.3.0-rc.1",
   "private": true,
   "type": "module",
   "description": "Portable CLI for image-first Wayground math quiz production",

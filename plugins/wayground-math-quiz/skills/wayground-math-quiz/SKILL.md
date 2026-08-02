@@ -1,6 +1,6 @@
 ---
 name: wayground-math-quiz
-description: Build reproducible Wayground math quizzes from Word or PDF source papers, especially questions whose formulas, geometry figures, tables, or answer choices must be preserved as images. Use when an agent needs to ingest an original test, render pages, crop questions by visual inspection, balance answer positions, validate a canonical quiz.json, preview the quiz, or publish through the available Wayground connector or a logged-in browser.
+description: Build reproducible Wayground math quizzes from Word/PDF papers or original visual questions, including deterministic diagrams, image answer options, and AI-background narrative puzzles with locked math overlays. Use when an agent needs to ingest or crop a source paper, design a visual-spec, compose and validate question images, balance answers, preview a canonical quiz.json, export a sharing package, or publish through a Wayground connector or logged-in browser.
 ---
 
 # Wayground Math Quiz
@@ -19,6 +19,7 @@ Turn a Word/PDF math paper into a traceable, image-first Wayground quiz. Keep th
 6. Do not store cookies, access tokens, browser profiles, student names, or private account data in the skill or job package.
 7. Review every crop and answer. Do not rely on OCR to rewrite mathematical notation.
 8. Publish only after strict validation passes. After publishing, verify the question count, images, correct answers, order, and settings in Wayground.
+9. For AI-composite questions, let AI create only the narrative background; render every answer-bearing number, label, equation, count, dimension, and clue position deterministically.
 
 ## Choose the publishing route
 
@@ -100,6 +101,24 @@ Open the crop images and check:
 
 If a crop is poor, edit `crop-plan.json`, rerun `crop --force`, and inspect again.
 
+### 4A. Create original visual questions
+
+Use the visual factory for diagrams, comics, escape-room clues, maps, shops, matchstick patterns, or image answer options. Read [references/visual-question-factory.md](references/visual-question-factory.md) before creating an AI-composite question.
+
+```powershell
+node ".\scripts\quiz.mjs" visual-init --out "D:\quiz-jobs\visual-01\visual\q001\visual-spec.json" --id "q001" --title "視覺題" --mode "deterministic"
+node ".\scripts\quiz.mjs" compose --spec "D:\quiz-jobs\visual-01\visual\q001\visual-spec.json" --out "D:\quiz-jobs\visual-01\visual\q001\final.png"
+node ".\scripts\quiz.mjs" visual-validate --spec "D:\quiz-jobs\visual-01\visual\q001\visual-spec.json" --image "D:\quiz-jobs\visual-01\visual\q001\final.png" --strict
+```
+
+Choose one mode:
+
+- `deterministic`: exact diagrams, number lines, balance scales, charts, or matchsticks;
+- `source-crop`: reviewed fragments from an original paper;
+- `ai-composite`: AI background plus deterministic math overlays.
+
+Keep the selected AI background, final prompt, locked facts, final PNG, and validation report. Do not ask another agent to regenerate a confirmed image.
+
 ### 5. Validate and preview
 
 ```powershell
@@ -117,10 +136,10 @@ Text-only connector payload:
 node ".\scripts\quiz.mjs" publish --adapter wayground-mcp --quiz "D:\quiz-jobs\unit-01\quiz.json" --out "D:\quiz-jobs\unit-01\export\wayground-mcp.json"
 ```
 
-Image-question browser plan:
+Image-question browser plan and resumable state:
 
 ```powershell
-node ".\scripts\quiz.mjs" publish --adapter wayground-browser --quiz "D:\quiz-jobs\unit-01\quiz.json" --out "D:\quiz-jobs\unit-01\export\wayground-browser.json"
+node ".\scripts\quiz.mjs" publish --adapter wayground-browser --quiz "D:\quiz-jobs\unit-01\quiz.json" --out "D:\quiz-jobs\unit-01\export\wayground-browser.json" --state "D:\quiz-jobs\unit-01\publication-state.json"
 ```
 
 Portable package:
@@ -135,20 +154,17 @@ node ".\scripts\quiz.mjs" publish --adapter export-only --quiz "D:\quiz-jobs\uni
 
 For `wayground-mcp`, call the available Wayground quiz-creation tool with the generated payload. The current connector is suitable only when every question is text-only.
 
-For `wayground-browser`, use a logged-in user browser and follow [references/browser-publishing.md](references/browser-publishing.md). Browser selectors are intentionally not hard-coded; take a fresh accessibility snapshot before each major editor action.
+For `wayground-browser`, control the agent environment's already open, logged-in browser and follow [references/browser-publishing.md](references/browser-publishing.md). Do not launch or copy a persistent browser profile. Do not delete overlay DOM or force-click blocked controls. Confirm explicit resource-publication authorization and the visible teacher account, then record `publication-state --action authorize --resource-only true --account-confirmed true` before adding questions.
 
-Save evidence in the job directory:
+Use `correctAnswerIds` as authoritative; `correctAnswerIndices` are zero-based cross-checks. The browser plan records strict-validation time plus `quiz.json` and image hashes. Treat each question as an atomic transaction. After saving it, visibly confirm that the resource question count increased by one, confirm the image and correct answer, capture a screenshot, and record a `publication-state --action mark` checkpoint. Stop on the first unverified step and resume from the first pending question.
 
-- final resource/edit URL;
-- post-publish screenshot;
-- question-count screenshot or structured verification;
-- `publication-evidence.json`.
-
-Then run:
+After publishing, re-open the specific resource. Use `publication-state --action finalize` to create `publication-evidence.json`, then run:
 
 ```powershell
 node ".\scripts\quiz.mjs" verify --quiz "D:\quiz-jobs\unit-01\quiz.json" --evidence "D:\quiz-jobs\unit-01\publication-evidence.json"
 ```
+
+A dashboard, login, create, My Library, or draft-list URL is never publication evidence. Verification requires the exact title, exact question order/count, one checkpoint per question, loaded images, confirmed answers, a resource-specific URL, and two distinct screenshots.
 
 ## Agent handoff contract
 
@@ -168,11 +184,14 @@ Do not hand off browser cookies or account secrets. A new agent should start fro
 - `scripts/quiz.mjs`: main cross-platform CLI
 - `mcp/server.mjs`: dependency-free thin MCP wrapper over the CLI
 - `scripts/document_pipeline.py`: PDF rendering and image cropping
+- `scripts/visual_pipeline.py`: deterministic visual composition and strict visual checks
 - `scripts/word_to_pdf.ps1`: Microsoft Word conversion fallback
 - `scripts/run.ps1`: PowerShell launcher
 - `assets/quiz.schema.json`: canonical JSON Schema
+- `assets/visual-spec.schema.json`: visual-question composition schema
 - `assets/config.example.json`: path-free configuration example
 - `references/quiz-schema.md`: field and crop-plan reference
+- `references/visual-question-factory.md`: deterministic and AI-composite visual workflow
 - `references/wayground-capabilities.md`: supported routes and platform constraints
 - `references/browser-publishing.md`: safe browser publishing and verification
 - `references/mcp-server.md`: standalone MCP setup and security boundary

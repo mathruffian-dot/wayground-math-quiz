@@ -26,8 +26,10 @@ import { fileURLToPath } from "node:url";
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const SKILL_DIR = dirname(SCRIPT_DIR);
 const PIPELINE = join(SCRIPT_DIR, "document_pipeline.py");
+const VISUAL_PIPELINE = join(SCRIPT_DIR, "visual_pipeline.py");
 const WORD_HELPER = join(SCRIPT_DIR, "word_to_pdf.ps1");
 const QUIZ_SCHEMA = join(SKILL_DIR, "assets", "quiz.schema.json");
+const VISUAL_SCHEMA = join(SKILL_DIR, "assets", "visual-spec.schema.json");
 const SCHEMA_VERSION = "1.0.0";
 
 class CliError extends Error {
@@ -123,6 +125,24 @@ function writeText(path, value) {
   writeFileSync(path, value, "utf8");
 }
 
+function sha256File(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function storedPath(baseDir, candidate) {
+  const absolute = isAbsolute(String(candidate))
+    ? resolve(String(candidate))
+    : safeResolve(baseDir, String(candidate));
+  if (!existsSync(absolute) || !statSync(absolute).isFile()) {
+    throw new CliError(`Evidence file not found: ${absolute}`);
+  }
+  const rel = relative(baseDir, absolute);
+  if (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel)) {
+    return rel.split(sep).join("/");
+  }
+  return absolute;
+}
+
 function safeResolve(root, candidate) {
   const rootPath = resolve(root);
   const target = resolve(rootPath, candidate);
@@ -182,6 +202,7 @@ function runPipeline(subcommand, pipelineArgs, options) {
   const result = spawnSync(python.command, args, {
     encoding: "utf8",
     windowsHide: true,
+    env: { ...process.env, PYTHONUTF8: "1" },
     maxBuffer: 20 * 1024 * 1024,
   });
   if (result.error) {
@@ -198,6 +219,33 @@ function runPipeline(subcommand, pipelineArgs, options) {
   }
 }
 
+function runVisualPipeline(subcommand, pipelineArgs, options) {
+  const python = findPython(options);
+  if (!python) {
+    throw new CliError(
+      "Python 3 was not found. Pass --python or set WAYGROUND_PYTHON."
+    );
+  }
+  const args = [...python.prefix, VISUAL_PIPELINE, subcommand, ...pipelineArgs];
+  const result = spawnSync(python.command, args, {
+    encoding: "utf8",
+    windowsHide: true,
+    env: { ...process.env, PYTHONUTF8: "1" },
+    maxBuffer: 20 * 1024 * 1024,
+  });
+  if (result.error) {
+    throw new CliError(`Unable to start visual pipeline: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || "").trim();
+    throw new CliError(detail || `Visual pipeline failed with code ${result.status}`);
+  }
+  try {
+    return JSON.parse(result.stdout);
+  } catch {
+    throw new CliError(`Visual pipeline returned invalid JSON:\n${result.stdout}`);
+  }
+}
 function printJson(value) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
@@ -242,6 +290,145 @@ function cropPlanTemplate() {
   };
 }
 
+function visualSpecTemplate(options) {
+  const mode = String(options.mode ?? "deterministic");
+  if (!["deterministic", "source-crop", "ai-composite"].includes(mode)) {
+    throw new CliError("--mode must be deterministic, source-crop, or ai-composite");
+  }
+  const id = String(options.id ?? "visual-q001");
+  const title = String(options.title ?? "未命名視覺題");
+  const width = numberOption(options, "width", 1200);
+  const height = numberOption(options, "height", 900);
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    id,
+    title,
+    mode,
+    canvas: {
+      width,
+      height,
+      background: "#f8fafc",
+    },
+    alt: "請描述學生需要從圖片讀取的數學資訊",
+    answer: {
+      optionIds: ["A", "B", "C", "D"],
+      correctOptionId: "A",
+      unique: false,
+    },
+    provenance:
+      mode === "ai-composite"
+        ? {
+            provider: "請填寫圖片生成工具",
+            prompt: "請貼上最後使用的完整生圖提示詞",
+            generatedAt: "",
+            notes: "AI 只產生情境背景；數學事實由 overlay 圖層加入。",
+          }
+        : {
+            provider: mode === "source-crop" ? "source-document" : "deterministic-renderer",
+            prompt: "",
+            generatedAt: "",
+            notes: "",
+          },
+    lockedFacts: [],
+    review: {
+      mathChecked: false,
+      visualChecked: false,
+      ambiguityChecked: false,
+      reviewer: "",
+      notes: "",
+    },
+    layers: [
+      {
+        type: "text",
+        x: width / 2,
+        y: height / 2,
+        anchor: "center",
+        valign: "middle",
+        text: "請編輯 visual-spec.json",
+        fontSize: 52,
+        weight: "bold",
+        fill: "#334155",
+      },
+    ],
+  };
+}
+
+function commandVisualInit(options) {
+  const output = resolve(requireOption(options, "out"));
+  ensureWritableTarget(output, booleanOption(options, "force", false));
+  const spec = visualSpecTemplate(options);
+  writeJson(output, spec);
+  printJson({ ok: true, visualSpec: output, mode: spec.mode });
+  return spec;
+}
+
+function commandCompose(options) {
+  const spec = resolve(requireOption(options, "spec"));
+  const output = resolve(requireOption(options, "out"));
+  const args = ["--spec", spec, "--out", output];
+  if (booleanOption(options, "force", false)) args.push("--force");
+  const result = runVisualPipeline("compose", args, options);
+  printJson(result);
+  return result;
+}
+
+function commandVisualValidate(options) {
+  const spec = resolve(requireOption(options, "spec"));
+  const args = ["--spec", spec];
+  if (options.image) args.push("--image", resolve(String(options.image)));
+  if (booleanOption(options, "strict", false)) args.push("--strict");
+  if (options.report) args.push("--report", resolve(String(options.report)));
+  const result = runVisualPipeline("validate", args, options);
+  process.stdout.write(
+    `${result.valid ? "PASS" : "FAIL"}: visual spec, ${result.errorCount} errors, ${result.warningCount} warnings\n`
+  );
+  for (const issue of result.issues ?? []) {
+    process.stdout.write(
+      `[${issue.severity.toUpperCase()}] ${issue.code} ${issue.path}: ${issue.message}\n`
+    );
+  }
+  return result;
+}
+
+function commandPromptPack(options) {
+  const specPath = resolve(requireOption(options, "spec"));
+  const output = resolve(requireOption(options, "out"));
+  ensureWritableTarget(output, booleanOption(options, "force", false));
+  const spec = readJson(specPath);
+  const facts = (spec.lockedFacts ?? [])
+    .map(
+      (fact) =>
+        `- ${String(fact.id ?? "fact")}: ${JSON.stringify(fact.value)}（${String(
+          fact.renderedBy ?? "overlay"
+        )}）${fact.description ? `—${fact.description}` : ""}`
+    )
+    .join("\n");
+  const markdown = `# ${String(spec.title ?? spec.id ?? "視覺題")}生圖交接包
+
+- 規格檔：${basename(specPath)}
+- 模式：${String(spec.mode ?? "")}
+- 圖片用途：Wayground 數學題情境背景
+- 圖片替代文字：${String(spec.alt ?? "")}
+
+## 最終生圖提示詞
+
+${String(spec.provenance?.prompt ?? "此題不需要 AI 生圖。")}
+
+## 不可交給 AI 決定的數學事實
+
+${facts || "- 無；本題由確定性繪圖完成。"}
+
+## 合成規則
+
+- AI 圖只作為背景或敘事素材。
+- 數字、算式、價格、幾何關係、物件精確數量與答案線索由 overlay 圖層加入。
+- 以 visual-spec.json 與最終 PNG 為準，不重新生成已確認的最終圖片。
+- 發布前執行 compose、visual-validate --strict、quiz validate --strict 與 preview。
+`;
+  writeText(output, markdown);
+  printJson({ ok: true, promptPack: output, lockedFactCount: spec.lockedFacts?.length ?? 0 });
+  return output;
+}
 function commandInit(options) {
   const output = resolve(requireOption(options, "out"));
   mkdirSync(output, { recursive: true });
@@ -376,6 +563,7 @@ function normalizeOptions(rawOptions) {
     };
     if (option.latex) normalized.latex = String(option.latex);
     if (option.image) normalized.image = String(option.image);
+    if (option.imageAlt) normalized.imageAlt = String(option.imageAlt);
     return normalized;
   });
 }
@@ -620,6 +808,14 @@ function validateQuizData(quiz, baseDir, strict = false) {
       }
       if (option?.image) {
         validateAssetPath(option.image, baseDir, `${optionPath}.image`, add);
+        if (!String(option.imageAlt ?? "").trim()) {
+          add(
+            strict ? "error" : "warning",
+            "option-image-alt",
+            `${optionPath}.imageAlt`,
+            "Option images need concise alt text"
+          );
+        }
       }
     });
     const correctIds = question?.correctOptionIds;
@@ -656,6 +852,24 @@ function validateQuizData(quiz, baseDir, strict = false) {
         );
       }
     }
+    if (question?.visualSpec) {
+      const visualPath = `${qPath}.visualSpec`;
+      if (isAbsolute(String(question.visualSpec))) {
+        add("error", "absolute-visual-spec", visualPath, "visualSpec must be relative to quiz.json");
+      } else {
+        try {
+          const resolvedVisualSpec = safeResolve(baseDir, String(question.visualSpec));
+          if (!existsSync(resolvedVisualSpec) || !statSync(resolvedVisualSpec).isFile()) {
+            add("error", "missing-visual-spec", visualPath, `Visual spec not found: ${resolvedVisualSpec}`);
+          } else if (extname(resolvedVisualSpec).toLowerCase() !== ".json") {
+            add("error", "visual-spec-format", visualPath, "visualSpec must point to a JSON file");
+          }
+        } catch (error) {
+          add("error", "unsafe-visual-spec", visualPath, error.message);
+        }
+      }
+    }
+
     if (!question?.source?.documentId) {
       add("error", "source-link", `${qPath}.source`, "source.documentId is required");
     } else if (
@@ -875,7 +1089,7 @@ function renderQuestionHtml(question, index, baseDir) {
         const optionPath = safeResolve(baseDir, option.image);
         content += `<img class="option-image" src="${fileDataUri(
           optionPath
-        )}" alt="">`;
+        )}" alt="${escapeHtml(option.imageAlt ?? "")}">`;
       }
       return `<li><span class="option-label">${escapeHtml(
         option.id
@@ -1072,13 +1286,27 @@ function connectorPayload(quiz) {
   };
 }
 
-function browserPayload(quiz, quizPath) {
+function browserPayload(quiz, quizPath, validation) {
   const baseDir = dirname(quizPath);
   return {
     schemaVersion: SCHEMA_VERSION,
     adapter: "wayground-browser",
     generatedAt: new Date().toISOString(),
     sourceQuiz: quizPath,
+    sourceQuizSha256: sha256File(quizPath),
+    strictValidation: {
+      passed: true,
+      validatedAt: new Date().toISOString(),
+      questionCount: quiz.questions.length,
+      errorCount: validation.errorCount,
+      warningCount: validation.warningCount,
+    },
+    publicationApproval: {
+      explicitPublicationAuthorizationRequired: true,
+      accountConfirmationRequired: true,
+      allowedAction: "create-resource",
+      assignmentOrLiveSessionAuthorized: false,
+    },
     resource: {
       title: quiz.title,
       subject: quiz.subject,
@@ -1093,13 +1321,30 @@ function browserPayload(quiz, quizPath) {
     },
     browserPolicy: {
       useExistingLoggedInSession: true,
+      launchPersistentContext: false,
+      copyOrReuseBrowserProfile: false,
       persistSessionInJob: false,
       accessibilitySnapshotBeforeAction: true,
       hardCodedSelectors: false,
+      removeDomOverlays: false,
+      forceClicks: false,
+    },
+    executionProtocol: {
+      mode: "checkpointed-state-machine",
+      stateCommand: "publication-state",
+      stopOnFirstUnverifiedStep: true,
+      resumeFromFirstPendingQuestion: true,
+      requireVisibleModalDismissal: true,
+      requireQuestionCountIncrementAfterSave: true,
+      requireResourceSpecificUrlBeforeFinalize: true,
+      preferCorrectAnswerIds: true,
+      correctAnswerIndexBase: 0,
+      titleDoesNotOverrideRuntimeShuffleSettings: true,
     },
     questions: quiz.questions.map((question, index) => ({
       order: index + 1,
       id: question.id,
+      expectedQuestionCountAfterSave: index + 1,
       type: "multiple-choice",
       prompt:
         question.stem?.text ??
@@ -1107,13 +1352,21 @@ function browserPayload(quiz, quizPath) {
       image: question.stem?.image
         ? safeResolve(baseDir, question.stem.image)
         : null,
+      imageSha256: question.stem?.image
+        ? sha256File(safeResolve(baseDir, question.stem.image))
+        : null,
       imageAlt: question.stem?.alt ?? "",
       options: question.options.map((option) => ({
         id: option.id,
         content: option.content,
         latex: option.latex ?? null,
         image: option.image ? safeResolve(baseDir, option.image) : null,
+        imageSha256: option.image
+          ? sha256File(safeResolve(baseDir, option.image))
+          : null,
+        imageAlt: option.imageAlt ?? "",
       })),
+      correctAnswerIds: question.correctOptionIds.map(String),
       correctAnswerIndices: question.correctOptionIds.map((correctId) =>
         question.options.findIndex(
           (option) => String(option.id) === String(correctId)
@@ -1124,10 +1377,14 @@ function browserPayload(quiz, quizPath) {
     })),
     verification: {
       expectedQuestionCount: quiz.questions.length,
+      expectedQuestionOrder: quiz.questions.map((question) => question.id),
       compareCorrectAnswers: true,
       confirmImagesLoaded: true,
-      confirmShuffleOptionsOff: true,
+      confirmResourceReopened: true,
+      requireResourceSpecificUrl: true,
+      requireDistinctScreenshots: true,
       evidenceFile: "publication-evidence.json",
+      stateFile: "publication-state.json",
     },
   };
 }
@@ -1155,6 +1412,26 @@ function copyPortablePackage(quiz, quizPath, output, force) {
     for (const option of question.options ?? []) {
       if (option.image) assetPaths.add(option.image);
     }
+    if (question.visualSpec) {
+      const visualSpecPath = safeResolve(baseDir, question.visualSpec);
+      assetPaths.add(question.visualSpec);
+      const visualSpec = readJson(visualSpecPath);
+      for (const layer of visualSpec.layers ?? []) {
+        if (layer?.type !== "image" || !layer.path) continue;
+        const dependency = safeResolve(dirname(visualSpecPath), String(layer.path));
+        const dependencyRelative = relative(baseDir, dependency);
+        if (
+          dependencyRelative === ".." ||
+          dependencyRelative.startsWith(`..${sep}`) ||
+          isAbsolute(dependencyRelative)
+        ) {
+          throw new CliError(
+            `Visual spec dependency escapes the quiz package: ${layer.path}`
+          );
+        }
+        assetPaths.add(dependencyRelative.split(sep).join("/"));
+      }
+    }
   }
   for (const asset of assetPaths) {
     if (isAbsolute(asset)) {
@@ -1168,11 +1445,13 @@ function copyPortablePackage(quiz, quizPath, output, force) {
   }
   writeJson(join(output, "quiz.json"), cloned);
   copyFileSync(QUIZ_SCHEMA, join(output, "quiz.schema.json"));
+  copyFileSync(VISUAL_SCHEMA, join(output, "visual-spec.schema.json"));
   writeJson(join(output, "package-manifest.json"), {
     schemaVersion: SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
     quiz: "quiz.json",
     schema: "quiz.schema.json",
+    visualSchema: "visual-spec.schema.json",
     assets: copiedAssets,
     containsCredentials: false,
   });
@@ -1185,8 +1464,9 @@ function copyPortablePackage(quiz, quizPath, output, force) {
 function commandPublish(options) {
   const adapter = String(options.adapter ?? "export-only");
   const quizPath = resolve(requireOption(options, "quiz"));
+  const quizDir = dirname(quizPath);
   const quiz = readJson(quizPath);
-  const validation = validateQuizData(quiz, dirname(quizPath), true);
+  const validation = validateQuizData(quiz, quizDir, true);
   if (!validation.valid) {
     printValidation(validation);
     throw new CliError("Strict validation must pass before publication.", 1);
@@ -1202,10 +1482,20 @@ function commandPublish(options) {
   }
   if (adapter === "wayground-browser") {
     const output = resolve(requireOption(options, "out"));
+    const stateOutput = options.state ? resolve(String(options.state)) : null;
     ensureWritableTarget(output, force);
-    const payload = browserPayload(quiz, quizPath);
+    if (stateOutput) ensureWritableTarget(stateOutput, force);
+    const payload = browserPayload(quiz, quizPath, validation);
+    if (stateOutput) payload.verification.stateFile = stateOutput;
     writeJson(output, payload);
-    printJson({ ok: true, adapter, output, questionCount: quiz.questions.length });
+    if (stateOutput) writeJson(stateOutput, createPublicationState(payload, output));
+    printJson({
+      ok: true,
+      adapter,
+      output,
+      state: stateOutput,
+      questionCount: quiz.questions.length,
+    });
     return payload;
   }
   if (adapter === "export-only") {
@@ -1219,26 +1509,294 @@ function commandPublish(options) {
   );
 }
 
+function resourceSpecificWaygroundUrl(value) {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol !== "https:" || !/(^|\.)wayground\.com$/i.test(url.hostname)) {
+      return null;
+    }
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (
+      segments.length === 0 ||
+      segments.includes("login") ||
+      segments.includes("my-library") ||
+      segments.at(-1) === "create"
+    ) {
+      return null;
+    }
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      if (!["quiz", "assessment"].includes(segments[index].toLowerCase())) continue;
+      const resourceId = segments[index + 1];
+      if (/^[A-Za-z0-9_-]{8,}$/.test(resourceId)) {
+        return { url: url.toString(), resourceId };
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function createPublicationState(plan, planPath) {
+  if (plan?.adapter !== "wayground-browser" || !Array.isArray(plan.questions)) {
+    throw new CliError("Publication state requires a wayground-browser plan.");
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    adapter: "wayground-browser",
+    status: "not-started",
+    plan: planPath,
+    planSha256: sha256File(planPath),
+    sourceQuiz: plan.sourceQuiz,
+    sourceQuizSha256: plan.sourceQuizSha256 ?? null,
+    strictValidation: plan.strictValidation ?? null,
+    publicationApproval: {
+      confirmed: false,
+      resourceOnly: true,
+      accountConfirmed: false,
+      authorizedAt: null,
+    },
+    resourceMode: "create-new",
+    abandonedResourceUrls: [],
+    expectedTitle: plan.resource?.title ?? "",
+    expectedQuestionCount: plan.questions.length,
+    resourceUrl: null,
+    startedAt: null,
+    updatedAt: new Date().toISOString(),
+    questions: plan.questions.map((question) => ({
+      order: question.order,
+      id: question.id,
+      expectedQuestionCountAfterSave: Number(
+        question.expectedQuestionCountAfterSave ?? question.order
+      ),
+      hasImage: Boolean(question.image),
+      imageSha256: question.imageSha256 ?? null,
+      correctAnswerIds: Array.isArray(question.correctAnswerIds)
+        ? question.correctAnswerIds.map(String)
+        : [],
+      status: "pending",
+      observedQuestionCount: 0,
+      imageLoaded: false,
+      correctAnswerConfirmed: false,
+      screenshot: null,
+      savedAt: null,
+    })),
+  };
+}
+
+function commandPublicationState(options) {
+  const action = String(options.action ?? "").trim().toLowerCase();
+  if (action === "init") {
+    const planPath = resolve(requireOption(options, "plan"));
+    const output = resolve(requireOption(options, "out"));
+    ensureWritableTarget(output, booleanOption(options, "force", false));
+    const state = createPublicationState(readJson(planPath), planPath);
+    writeJson(output, state);
+    printJson({ ok: true, action, output, questionCount: state.questions.length });
+    return state;
+  }
+
+  const statePath = resolve(requireOption(options, "state"));
+  const state = readJson(statePath);
+  if (state?.adapter !== "wayground-browser" || !Array.isArray(state.questions)) {
+    throw new CliError("Invalid wayground-browser publication state.");
+  }
+  const stateDir = dirname(statePath);
+
+  if (action === "authorize") {
+    if (!booleanOption(options, "resource-only", false)) {
+      throw new CliError("--resource-only true is required; assignment/live-session actions are not authorized.");
+    }
+    if (!booleanOption(options, "account-confirmed", false)) {
+      throw new CliError("--account-confirmed true is required after checking the visible teacher account.");
+    }
+    const now = new Date().toISOString();
+    state.publicationApproval = {
+      confirmed: true,
+      resourceOnly: true,
+      accountConfirmed: true,
+      authorizedAt: now,
+    };
+    state.status = "authorized";
+    state.updatedAt = now;
+    writeJson(statePath, state);
+    printJson({ ok: true, action, resourceOnly: true, accountConfirmed: true });
+    return state;
+  }
+
+  if (action === "mark") {
+    if (state.status === "published") {
+      throw new CliError("Published state cannot be changed.");
+    }
+    if (
+      state.publicationApproval?.confirmed !== true ||
+      state.publicationApproval?.resourceOnly !== true ||
+      state.publicationApproval?.accountConfirmed !== true
+    ) {
+      throw new CliError("Authorize resource-only publication and confirm the visible account before marking questions.");
+    }
+    const questionId = requireOption(options, "question");
+    const question = state.questions.find((item) => String(item.id) === questionId);
+    if (!question) throw new CliError(`Question not found in publication state: ${questionId}`);
+    const previous = state.questions.filter((item) => item.order < question.order);
+    if (previous.some((item) => item.status !== "saved")) {
+      throw new CliError(`Cannot mark ${questionId}; an earlier question is still pending.`);
+    }
+    const observedCount = numberOption(options, "observed-count", Number.NaN);
+    if (observedCount !== question.expectedQuestionCountAfterSave) {
+      throw new CliError(
+        `Expected saved question count ${question.expectedQuestionCountAfterSave}, received ${observedCount}.`
+      );
+    }
+    if (!booleanOption(options, "image-loaded", false)) {
+      throw new CliError("--image-loaded true is required after visually confirming the image.");
+    }
+    if (!booleanOption(options, "answer-confirmed", false)) {
+      throw new CliError("--answer-confirmed true is required after checking the correct option.");
+    }
+    const screenshot = storedPath(stateDir, requireOption(options, "screenshot"));
+    if (options.resourceUrl) {
+      const resource = resourceSpecificWaygroundUrl(String(options.resourceUrl));
+      if (!resource) throw new CliError("--resource-url must identify a specific Wayground resource.");
+      state.resourceUrl = resource.url;
+    }
+    const now = new Date().toISOString();
+    Object.assign(question, {
+      status: "saved",
+      observedQuestionCount: observedCount,
+      imageLoaded: true,
+      correctAnswerConfirmed: true,
+      screenshot,
+      savedAt: now,
+    });
+    state.status = "in-progress";
+    state.startedAt ??= now;
+    state.updatedAt = now;
+    writeJson(statePath, state);
+    printJson({ ok: true, action, question: questionId, observedCount });
+    return state;
+  }
+
+  if (action === "finalize") {
+    const pending = state.questions.filter((question) => question.status !== "saved");
+    if (pending.length) {
+      throw new CliError(`Cannot finalize; pending questions: ${pending.map((item) => item.id).join(", ")}`);
+    }
+    const resource = resourceSpecificWaygroundUrl(requireOption(options, "resource-url"));
+    if (!resource) {
+      throw new CliError("--resource-url must be a resource-specific Wayground quiz/assessment URL.");
+    }
+    const observedTitle = requireOption(options, "observed-title");
+    if (observedTitle !== state.expectedTitle) {
+      throw new CliError(`Published title mismatch. Expected "${state.expectedTitle}".`);
+    }
+    const observedCount = numberOption(options, "question-count", Number.NaN);
+    if (observedCount !== state.expectedQuestionCount) {
+      throw new CliError(
+        `Published question count mismatch. Expected ${state.expectedQuestionCount}, received ${observedCount}.`
+      );
+    }
+    if (!booleanOption(options, "reopened", false)) {
+      throw new CliError("--reopened true is required after reopening the saved resource.");
+    }
+    if (!booleanOption(options, "images-loaded", false)) {
+      throw new CliError("--images-loaded true is required after checking every question image.");
+    }
+    if (!booleanOption(options, "answers-confirmed", false)) {
+      throw new CliError("--answers-confirmed true is required after checking every correct answer.");
+    }
+    const overview = storedPath(stateDir, requireOption(options, "overview-screenshot"));
+    const representative = storedPath(stateDir, requireOption(options, "question-screenshot"));
+    const overviewPath = isAbsolute(overview) ? overview : safeResolve(stateDir, overview);
+    const representativePath = isAbsolute(representative)
+      ? representative
+      : safeResolve(stateDir, representative);
+    if (overviewPath === representativePath || sha256File(overviewPath) === sha256File(representativePath)) {
+      throw new CliError("Overview and representative question screenshots must be different images.");
+    }
+    const verifiedAt = new Date().toISOString();
+    const evidence = {
+      schemaVersion: SCHEMA_VERSION,
+      status: "published",
+      adapter: "wayground-browser",
+      sourceQuiz: state.sourceQuiz,
+      sourceQuizSha256: state.sourceQuizSha256,
+      planSha256: state.planSha256,
+      publicationApproval: state.publicationApproval,
+      resourceUrl: resource.url,
+      resourceId: resource.resourceId,
+      title: observedTitle,
+      titleConfirmed: true,
+      questionCount: observedCount,
+      questionOrder: state.questions.map((question) => question.id),
+      resourceReopened: true,
+      imagesLoaded: true,
+      correctAnswersVerified: true,
+      assignmentCreated: false,
+      verifiedAt,
+      screenshots: [overview, representative],
+      questions: state.questions.map((question) => ({
+        order: question.order,
+        id: question.id,
+        status: question.status,
+        observedQuestionCount: question.observedQuestionCount,
+        imageLoaded: question.imageLoaded,
+        imageSha256: question.imageSha256,
+        correctAnswerConfirmed: question.correctAnswerConfirmed,
+        correctAnswerIds: question.correctAnswerIds,
+        screenshot: question.screenshot,
+        savedAt: question.savedAt,
+      })),
+    };
+    const output = resolve(requireOption(options, "out"));
+    ensureWritableTarget(output, booleanOption(options, "force", false));
+    writeJson(output, evidence);
+    state.status = "published";
+    state.resourceUrl = resource.url;
+    state.updatedAt = verifiedAt;
+    state.finalizedAt = verifiedAt;
+    state.evidenceFile = storedPath(stateDir, output);
+    writeJson(statePath, state);
+    printJson({ ok: true, action, output, resourceUrl: resource.url });
+    return evidence;
+  }
+
+  throw new CliError("--action must be init, authorize, mark, or finalize");
+}
 function commandVerify(options) {
   const quizPath = resolve(requireOption(options, "quiz"));
+  const quizDir = dirname(quizPath);
   const quiz = readJson(quizPath);
-  const validation = validateQuizData(quiz, dirname(quizPath), true);
+  const validation = validateQuizData(quiz, quizDir, true);
   const issues = [...validation.issues];
   const add = (severity, code, path, message) =>
     issues.push({ severity, code, path, message });
+  const browserEvidenceRequired = quiz.questions.some(
+    (question) => question.type === "image-mcq"
+  );
   let evidence = null;
   if (options.evidence) {
     const evidencePath = resolve(String(options.evidence));
+    const evidenceDir = dirname(evidencePath);
     evidence = readJson(evidencePath);
-    if (
-      typeof evidence.resourceUrl !== "string" ||
-      !/^https:\/\/(?:www\.)?wayground\.com\//i.test(evidence.resourceUrl)
-    ) {
+    const resource = resourceSpecificWaygroundUrl(evidence.resourceUrl);
+    if (!resource) {
       add(
         "error",
         "resource-url",
         "$evidence.resourceUrl",
-        "Evidence must contain a Wayground HTTPS URL"
+        "Evidence must contain a resource-specific Wayground quiz/assessment URL, not a dashboard, draft list, login, or create URL"
+      );
+    }
+    if (evidence.status !== "published") {
+      add("error", "publication-status", "$evidence.status", "Evidence status must be published");
+    }
+    if (evidence.title !== quiz.title || evidence.titleConfirmed !== true) {
+      add(
+        "error",
+        "published-title",
+        "$evidence.title",
+        "Evidence must confirm the exact canonical quiz title"
       );
     }
     if (Number(evidence.questionCount) !== quiz.questions.length) {
@@ -1249,17 +1807,6 @@ function commandVerify(options) {
         `Expected ${quiz.questions.length}, received ${evidence.questionCount}`
       );
     }
-    if (
-      quiz.questions.some((question) => question.type === "image-mcq") &&
-      evidence.shuffleOptions !== false
-    ) {
-      add(
-        "error",
-        "shuffle-verification",
-        "$evidence.shuffleOptions",
-        "Evidence must confirm shuffleOptions=false"
-      );
-    }
     if (!evidence.verifiedAt || Number.isNaN(Date.parse(evidence.verifiedAt))) {
       add(
         "error",
@@ -1268,27 +1815,167 @@ function commandVerify(options) {
         "Evidence needs a valid verifiedAt timestamp"
       );
     }
-    if (!Array.isArray(evidence.screenshots) || evidence.screenshots.length === 0) {
+
+    const expectedOrder = quiz.questions.map((question) => String(question.id));
+    const observedOrder = Array.isArray(evidence.questionOrder)
+      ? evidence.questionOrder.map(String)
+      : [];
+    if (JSON.stringify(observedOrder) !== JSON.stringify(expectedOrder)) {
+      add(
+        "error",
+        "question-order",
+        "$evidence.questionOrder",
+        "Evidence must contain every canonical question id in exact order"
+      );
+    }
+
+    if (browserEvidenceRequired) {
+      if (evidence.sourceQuizSha256 !== sha256File(quizPath)) {
+        add(
+          "error",
+          "source-quiz-hash",
+          "$evidence.sourceQuizSha256",
+          "Publication evidence does not match the current quiz.json"
+        );
+      }
+      if (
+        evidence.publicationApproval?.confirmed !== true ||
+        evidence.publicationApproval?.resourceOnly !== true ||
+        evidence.publicationApproval?.accountConfirmed !== true
+      ) {
+        add(
+          "error",
+          "publication-authorization",
+          "$evidence.publicationApproval",
+          "Evidence must confirm resource-only authorization and the visible teacher account"
+        );
+      }
+      if (evidence.resourceReopened !== true) {
+        add(
+          "error",
+          "resource-reopened",
+          "$evidence.resourceReopened",
+          "Re-open the saved resource before verification"
+        );
+      }
+      if (evidence.imagesLoaded !== true) {
+        add(
+          "error",
+          "images-loaded",
+          "$evidence.imagesLoaded",
+          "Evidence must confirm every question image loaded"
+        );
+      }
+      if (evidence.correctAnswersVerified !== true) {
+        add(
+          "error",
+          "answers-verified",
+          "$evidence.correctAnswersVerified",
+          "Evidence must confirm every correct answer"
+        );
+      }
+      if (evidence.assignmentCreated !== false) {
+        add(
+          "error",
+          "assignment-boundary",
+          "$evidence.assignmentCreated",
+          "Resource-only publication evidence must confirm that no assignment or live session was created"
+        );
+      }
+      if (!Array.isArray(evidence.questions) || evidence.questions.length !== quiz.questions.length) {
+        add(
+          "error",
+          "question-checkpoints",
+          "$evidence.questions",
+          "One saved checkpoint is required for every question"
+        );
+      } else {
+        evidence.questions.forEach((checkpoint, index) => {
+          const expected = quiz.questions[index];
+          const checkpointPath = `$evidence.questions[${index}]`;
+          const expectedAnswerIds = expected.correctOptionIds.map(String);
+          const observedAnswerIds = Array.isArray(checkpoint.correctAnswerIds)
+            ? checkpoint.correctAnswerIds.map(String)
+            : [];
+          const expectedImageSha256 = expected.stem?.image
+            ? sha256File(safeResolve(quizDir, expected.stem.image))
+            : null;
+          if (
+            String(checkpoint.id) !== String(expected.id) ||
+            Number(checkpoint.order) !== index + 1 ||
+            checkpoint.status !== "saved" ||
+            Number(checkpoint.observedQuestionCount) !== index + 1 ||
+            checkpoint.imageLoaded !== true ||
+            checkpoint.imageSha256 !== expectedImageSha256 ||
+            checkpoint.correctAnswerConfirmed !== true ||
+            JSON.stringify(observedAnswerIds) !== JSON.stringify(expectedAnswerIds)
+          ) {
+            add(
+              "error",
+              "question-checkpoint",
+              checkpointPath,
+              `Question ${expected.id} lacks a complete saved checkpoint`
+            );
+          }
+          if (typeof checkpoint.screenshot !== "string" || checkpoint.screenshot === "") {
+            add(
+              "error",
+              "question-screenshot",
+              `${checkpointPath}.screenshot`,
+              `Question ${expected.id} needs a post-save screenshot`
+            );
+          } else {
+            const screenshotPath = isAbsolute(checkpoint.screenshot)
+              ? resolve(checkpoint.screenshot)
+              : safeResolve(evidenceDir, checkpoint.screenshot);
+            if (!existsSync(screenshotPath) || !statSync(screenshotPath).isFile()) {
+              add(
+                "error",
+                "missing-question-screenshot",
+                `${checkpointPath}.screenshot`,
+                `Question screenshot not found: ${screenshotPath}`
+              );
+            }
+          }
+        });
+      }
+    }
+
+    if (!Array.isArray(evidence.screenshots) || evidence.screenshots.length < 2) {
       add(
         "error",
         "screenshots",
         "$evidence.screenshots",
-        "At least one verification screenshot is required"
+        "An overview screenshot and a representative question screenshot are required"
       );
     } else {
+      const screenshotPaths = [];
       evidence.screenshots.forEach((screenshot, index) => {
-        const path = isAbsolute(String(screenshot))
+        const screenshotPath = isAbsolute(String(screenshot))
           ? resolve(String(screenshot))
-          : safeResolve(dirname(evidencePath), String(screenshot));
-        if (!existsSync(path) || !statSync(path).isFile()) {
+          : safeResolve(evidenceDir, String(screenshot));
+        if (!existsSync(screenshotPath) || !statSync(screenshotPath).isFile()) {
           add(
             "error",
             "missing-screenshot",
             `$evidence.screenshots[${index}]`,
-            `Screenshot not found: ${path}`
+            `Screenshot not found: ${screenshotPath}`
           );
+        } else {
+          screenshotPaths.push(screenshotPath);
         }
       });
+      if (
+        screenshotPaths.length >= 2 &&
+        new Set(screenshotPaths.map((path) => sha256File(path))).size !== screenshotPaths.length
+      ) {
+        add(
+          "error",
+          "duplicate-screenshots",
+          "$evidence.screenshots",
+          "Verification screenshots must be different images"
+        );
+      }
     }
     for (const keyPath of findForbiddenKeys(evidence, "$evidence")) {
       add("error", "secret-field", keyPath, "Secret/session fields are not allowed");
@@ -1334,10 +2021,15 @@ Commands:
   ingest       Convert PDF/Word to normalized PDF and rendered page images
   crop         Crop question images from crop-plan.json
   assemble     Build canonical quiz.json from crop results
+  visual-init  Create a deterministic, source-crop, or AI-composite visual spec
+  compose      Render visual-spec.json to a screen-ready PNG
+  visual-validate Validate locked facts, assets, review flags, and final image
+  prompt-pack  Export an AI-image prompt and locked-fact handoff document
   answer-plan  Generate a deterministic balanced answer-position plan
   validate     Validate quiz structure, assets, sources, and answer balance
   preview      Create a self-contained teacher preview HTML
   publish      Create a connector payload, browser plan, or portable package
+  publication-state Create, checkpoint, or finalize a browser publication run
   verify       Validate local quiz plus publication evidence
 
 Run commands from any directory; paths may be absolute. Use --force only to
@@ -1363,6 +2055,18 @@ async function main() {
     case "assemble":
       commandAssemble(options);
       break;
+    case "visual-init":
+      commandVisualInit(options);
+      break;
+    case "compose":
+      commandCompose(options);
+      break;
+    case "visual-validate":
+      commandVisualValidate(options);
+      break;
+    case "prompt-pack":
+      commandPromptPack(options);
+      break;
     case "answer-plan":
       commandAnswerPlan(options);
       break;
@@ -1374,6 +2078,9 @@ async function main() {
       break;
     case "publish":
       commandPublish(options);
+      break;
+    case "publication-state":
+      commandPublicationState(options);
       break;
     case "verify":
       commandVerify(options);

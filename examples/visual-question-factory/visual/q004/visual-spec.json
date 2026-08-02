@@ -1,0 +1,368 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "q004",
+  "title": "校園商店價格謎題",
+  "mode": "ai-composite",
+  "canvas": {
+    "width": 1200,
+    "height": 900,
+    "background": "#f8fafc"
+  },
+  "alt": "校園商店背景上疊有兩筆飲料與三明治購買紀錄，求各買一份的總價。",
+  "answer": {
+    "optionIds": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correctOptionId": "D",
+    "unique": true
+  },
+  "provenance": {
+    "provider": "OpenAI built-in image generation",
+    "prompt": "Use case: illustration-story\nAsset type: background for a junior-high Wayground math visual puzzle\nPrimary request: Create a friendly contemporary school convenience-store interior as a clean educational illustration. Show a tidy counter, shelves, warm lighting, and subtle depth, but leave a large uncluttered central counter area and generous negative space where deterministic math cards will later be overlaid.\nStyle/medium: polished flat 2.5D editorial illustration, appealing to Taiwanese junior-high students\nComposition/framing: landscape 4:3, front-facing counter, clear central area, no important object at the outer edges\nColor palette: warm teal, amber, cream, coral accents\nConstraints: background atmosphere only; no readable text, no numbers, no prices, no equations, no logos, no brands, no watermark; do not create price labels or mathematical clues; keep all key mathematical information absent so it can be added later by code\nAvoid: crowded shelves, tiny repeated objects that invite counting, distorted hands, illegible signs, embedded answer choices",
+    "generatedAt": "2026-07-24",
+    "notes": "AI only generated the narrative background. All math facts are deterministic overlays."
+  },
+  "lockedFacts": [
+    {
+      "id": "equation1",
+      "value": "2d+s=110",
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "equation2",
+      "value": "d+2s=130",
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "drink",
+      "value": 30,
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "sandwich",
+      "value": 50,
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "sum",
+      "value": 80,
+      "renderedBy": "overlay"
+    }
+  ],
+  "review": {
+    "mathChecked": true,
+    "visualChecked": true,
+    "ambiguityChecked": true,
+    "reviewer": "candidate-demo",
+    "notes": "Original public-safe demonstration question."
+  },
+  "layers": [
+    {
+      "type": "image",
+      "path": "background-ai.png",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 900,
+      "fit": "cover"
+    },
+    {
+      "type": "rect",
+      "x": 30,
+      "y": 25,
+      "width": 1140,
+      "height": 115,
+      "fill": "#102a43dd",
+      "radius": 22
+    },
+    {
+      "type": "text",
+      "x": 600,
+      "y": 82,
+      "text": "校園商店的套餐價格謎題",
+      "fontSize": 50,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 80,
+      "y": 205,
+      "width": 490,
+      "height": 190,
+      "fill": "#ffffffee",
+      "radius": 22,
+      "stroke": "#0f766e",
+      "strokeWidth": 4
+    },
+    {
+      "type": "text",
+      "x": 325,
+      "y": 245,
+      "text": "購買紀錄一",
+      "fontSize": 30,
+      "fill": "#0f766e",
+      "anchor": "center",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 325,
+      "y": 300,
+      "text": "2杯飲料 + 1份三明治",
+      "fontSize": 30,
+      "fill": "#172033",
+      "anchor": "center",
+      "weight": "bold",
+      "maxWidth": 430
+    },
+    {
+      "type": "text",
+      "x": 325,
+      "y": 350,
+      "text": "= 110 元",
+      "fontSize": 34,
+      "fill": "#172033",
+      "anchor": "center",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 630,
+      "y": 205,
+      "width": 490,
+      "height": 190,
+      "fill": "#ffffffee",
+      "radius": 22,
+      "stroke": "#c2410c",
+      "strokeWidth": 4
+    },
+    {
+      "type": "text",
+      "x": 875,
+      "y": 245,
+      "text": "購買紀錄二",
+      "fontSize": 30,
+      "fill": "#c2410c",
+      "anchor": "center",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 875,
+      "y": 300,
+      "text": "1杯飲料 + 2份三明治",
+      "fontSize": 30,
+      "fill": "#172033",
+      "anchor": "center",
+      "weight": "bold",
+      "maxWidth": 430
+    },
+    {
+      "type": "text",
+      "x": 875,
+      "y": 350,
+      "text": "= 130 元",
+      "fontSize": 34,
+      "fill": "#172033",
+      "anchor": "center",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 175,
+      "y": 455,
+      "width": 850,
+      "height": 155,
+      "fill": "#fff7edee",
+      "radius": 24,
+      "stroke": "#f59e0b",
+      "strokeWidth": 5
+    },
+    {
+      "type": "text",
+      "x": 600,
+      "y": 505,
+      "text": "買 1 杯飲料和 1 份三明治，應付多少元？",
+      "fontSize": 38,
+      "fill": "#172033",
+      "anchor": "center",
+      "weight": "bold",
+      "maxWidth": 780
+    },
+    {
+      "type": "text",
+      "x": 600,
+      "y": 568,
+      "text": "所有價格都以圖上的購買紀錄為準",
+      "fontSize": 27,
+      "fill": "#9a3412",
+      "anchor": "center"
+    },
+    {
+      "type": "rect",
+      "x": 60,
+      "y": 740,
+      "width": 250,
+      "height": 108,
+      "fill": "#ffffffee",
+      "radius": 18,
+      "stroke": "#cbd5e1",
+      "strokeWidth": 3
+    },
+    {
+      "type": "circle",
+      "x": 100,
+      "y": 794,
+      "radius": 25,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 100,
+      "y": 794,
+      "text": "A",
+      "fontSize": 30,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 202,
+      "y": 794,
+      "text": "60元",
+      "fontSize": 38,
+      "fill": "#172033",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 345,
+      "y": 740,
+      "width": 250,
+      "height": 108,
+      "fill": "#ffffffee",
+      "radius": 18,
+      "stroke": "#cbd5e1",
+      "strokeWidth": 3
+    },
+    {
+      "type": "circle",
+      "x": 385,
+      "y": 794,
+      "radius": 25,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 385,
+      "y": 794,
+      "text": "B",
+      "fontSize": 30,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 487,
+      "y": 794,
+      "text": "70元",
+      "fontSize": 38,
+      "fill": "#172033",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 630,
+      "y": 740,
+      "width": 250,
+      "height": 108,
+      "fill": "#ffffffee",
+      "radius": 18,
+      "stroke": "#cbd5e1",
+      "strokeWidth": 3
+    },
+    {
+      "type": "circle",
+      "x": 670,
+      "y": 794,
+      "radius": 25,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 670,
+      "y": 794,
+      "text": "C",
+      "fontSize": 30,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 772,
+      "y": 794,
+      "text": "75元",
+      "fontSize": 38,
+      "fill": "#172033",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 915,
+      "y": 740,
+      "width": 250,
+      "height": 108,
+      "fill": "#ffffffee",
+      "radius": 18,
+      "stroke": "#cbd5e1",
+      "strokeWidth": 3
+    },
+    {
+      "type": "circle",
+      "x": 955,
+      "y": 794,
+      "radius": 25,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 955,
+      "y": 794,
+      "text": "D",
+      "fontSize": 30,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 1057,
+      "y": 794,
+      "text": "80元",
+      "fontSize": 38,
+      "fill": "#172033",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    }
+  ]
+}

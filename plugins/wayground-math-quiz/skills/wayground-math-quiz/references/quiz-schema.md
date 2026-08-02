@@ -56,6 +56,36 @@ Each multiple-choice question contains:
 
 For `text-mcq`, use `stem.type: "text"` and provide `stem.text`. Preserve optional LaTeX source in `stem.latex` or an option's `latex`; do not assume every publishing adapter can render it.
 
+## Visual questions and image options
+
+A designed visual question may link to its reproducible source:
+
+```json
+{
+  "stem": {
+    "type": "image",
+    "image": "visual/q001/final.png",
+    "alt": "天平左盤有三個 x 方塊與重量六，右盤是二十四。"
+  },
+  "visualSpec": "visual/q001/visual-spec.json"
+}
+```
+
+`visualSpec` is relative to `quiz.json`. The portable export copies the spec and every image layer dependency that remains inside the quiz job.
+
+For an image answer option, keep a stable label and add alt text:
+
+```json
+{
+  "id": "A",
+  "content": "A",
+  "image": "visual/q001/option-a.png",
+  "imageAlt": "Option A shows two connected squares"
+}
+```
+
+Strict validation requires `imageAlt` whenever an option has an image. See [visual-question-factory.md](visual-question-factory.md) for composition and AI-background rules.
+
 ## Crop plan
 
 `crop-plan.json` is written by an agent after visually inspecting the rendered pages:

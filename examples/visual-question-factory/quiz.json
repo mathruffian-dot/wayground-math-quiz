@@ -1,0 +1,279 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "visual-question-factory-demo-v03",
+  "title": "視覺題工廠：六種圖片題示範",
+  "subject": "數學",
+  "grade": {
+    "start": 7,
+    "end": 7
+  },
+  "language": "zh-TW",
+  "settings": {
+    "shuffleQuestions": false,
+    "shuffleOptions": false,
+    "balancedAnswerPositions": true
+  },
+  "sourceDocuments": [
+    {
+      "id": "original-demo",
+      "name": "原創視覺題示範",
+      "path": "build-demo.mjs",
+      "sha256": "af13c31758adaff5358a47016fb30e1c0399fece31300e20f8bb7668351ccafb"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q001",
+      "type": "image-mcq",
+      "cognitiveLevel": "記憶理解",
+      "stem": {
+        "type": "image",
+        "image": "visual/q001/final.png",
+        "alt": "平衡天平左盤有三個 x 方塊與重量六，右盤重量二十四，選出 x 的值。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "A"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／天平方程式"
+      },
+      "visualSpec": "visual/q001/visual-spec.json",
+      "explanation": "3x+6=24，所以 x=6。",
+      "tags": [
+        "視覺題",
+        "deterministic",
+        "v0.3-demo"
+      ]
+    },
+    {
+      "id": "q002",
+      "type": "image-mcq",
+      "cognitiveLevel": "記憶理解",
+      "stem": {
+        "type": "image",
+        "image": "visual/q002/final.png",
+        "alt": "數線上從負三向右移動五格的箭頭，選出終點。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "B"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／數線移動"
+      },
+      "visualSpec": "visual/q002/visual-spec.json",
+      "explanation": "-3+5=2。",
+      "tags": [
+        "視覺題",
+        "deterministic",
+        "v0.3-demo"
+      ]
+    },
+    {
+      "id": "q003",
+      "type": "image-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "image",
+        "image": "visual/q003/final.png",
+        "alt": "依序呈現一個、兩個、三個相連正方形及火柴棒數量，推算第五個圖形。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "C"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／火柴棒規律"
+      },
+      "visualSpec": "visual/q003/visual-spec.json",
+      "explanation": "每增加一個正方形多三根，第五個是 4+4×3=16。",
+      "tags": [
+        "視覺題",
+        "deterministic",
+        "v0.3-demo"
+      ]
+    },
+    {
+      "id": "q004",
+      "type": "image-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "image",
+        "image": "visual/q004/final.png",
+        "alt": "校園商店背景上疊有兩筆飲料與三明治購買紀錄，求各買一份的總價。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "D"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／校園商店價格謎題"
+      },
+      "visualSpec": "visual/q004/visual-spec.json",
+      "explanation": "解聯立關係可得飲料30元、三明治50元，合計80元。",
+      "tags": [
+        "視覺題",
+        "ai-composite",
+        "v0.3-demo"
+      ]
+    },
+    {
+      "id": "q005",
+      "type": "image-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "image",
+        "image": "visual/q005/final.png",
+        "alt": "神祕圖書室背景上有三張依序排列的算式線索卡，組合答案成三位數密碼。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "A"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／密室三線索"
+      },
+      "visualSpec": "visual/q005/visual-spec.json",
+      "explanation": "三張線索依序為5、8、3，因此密碼是583。",
+      "tags": [
+        "視覺題",
+        "ai-composite",
+        "v0.3-demo"
+      ]
+    },
+    {
+      "id": "q006",
+      "type": "image-mcq",
+      "cognitiveLevel": "應用",
+      "stem": {
+        "type": "image",
+        "image": "visual/q006/final.png",
+        "alt": "四格課堂漫畫中，題意為某數的三倍再加二等於二十，兩位學生提出不同方程式。"
+      },
+      "options": [
+        {
+          "id": "A",
+          "content": "A"
+        },
+        {
+          "id": "B",
+          "content": "B"
+        },
+        {
+          "id": "C",
+          "content": "C"
+        },
+        {
+          "id": "D",
+          "content": "D"
+        }
+      ],
+      "correctOptionIds": [
+        "B"
+      ],
+      "source": {
+        "documentId": "original-demo",
+        "reference": "原創示範／漫畫列式判斷"
+      },
+      "visualSpec": "visual/q006/visual-spec.json",
+      "explanation": "題意是先將未知數乘三再加二，所以女生的 3x+2=20 正確。",
+      "tags": [
+        "視覺題",
+        "ai-composite",
+        "v0.3-demo"
+      ]
+    }
+  ],
+  "createdAt": "2026-07-24T00:00:00.000Z"
+}

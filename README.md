@@ -5,6 +5,7 @@
 - 跨代理人 `wayground-math-quiz` skill
 - 平台中立的 `quiz.json` 規格
 - Word／PDF 正規化、頁面渲染、裁圖與驗證 CLI
+- v0.3 視覺題工廠：確定性繪圖、AI 情境合成、locked facts 與選項圖片
 - Wayground 文字題 connector plan、圖片題 browser plan 與離線匯出
 - 相依性極低的本機 MCP server
 - Claude Code、Codex、Google AntiGravity 與 OpenCode 四端安裝腳本
@@ -82,6 +83,23 @@ node ".\skills\wayground-math-quiz\scripts\quiz.mjs" publish --adapter wayground
 ```
 
 圖片題的瀏覽器發布步驟見 [browser-publishing.md](skills/wayground-math-quiz/references/browser-publishing.md)。
+
+## 視覺題工廠候選版
+
+v0.3 可從 `visual-spec.json` 產生天平、數線、火柴棒、漫畫、密室與商店情境題。AI 只生成敘事背景；會影響答案的資訊由程式精準疊加。
+
+```powershell
+node ".\skills\wayground-math-quiz\scripts\quiz.mjs" compose --spec ".\visual\q001\visual-spec.json" --out ".\visual\q001\final.png"
+node ".\skills\wayground-math-quiz\scripts\quiz.mjs" visual-validate --spec ".\visual\q001\visual-spec.json" --image ".\visual\q001\final.png" --strict
+```
+
+六題示範見 [visual-question-factory](examples/visual-question-factory/)，架構見 [視覺題工廠](docs/visual-question-factory.md)。日後分享可一鍵建立離線 HTML、提示詞交接包、瀏覽器發布計畫與可攜包：
+
+```powershell
+pwsh -NoProfile -File ".\scripts\build-visual-sharing-pack.ps1"
+```
+
+分享素材入口見 [sharing/README.md](sharing/README.md)。
 
 ## 發布方式
 

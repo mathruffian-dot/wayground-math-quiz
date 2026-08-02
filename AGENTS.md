@@ -16,6 +16,7 @@ Before changing or using the project:
 - `skills/wayground-math-quiz/` is the canonical skill source.
 - `plugins/wayground-math-quiz/skills/wayground-math-quiz/` is a generated mirror for the Codex plugin.
 - `quiz.json` is the canonical source of truth for each quiz job.
+- `visual-spec.json` is the reproducible source for each designed visual question; the reviewed final PNG is the publication asset.
 - Wayground is a publication target, not the only storage location.
 
 Edit the canonical skill first, then run:
@@ -33,6 +34,7 @@ Do not hand-edit the plugin mirror and canonical skill independently.
 - Work in a separate job directory.
 - Preserve complex formulas, diagrams, tables, and printed choices as images when text conversion could alter meaning.
 - Inspect every crop visually. OCR may assist discovery but must not silently rewrite mathematics.
+- For AI-composite questions, generate only the narrative background; render answer-bearing values, labels, counts, dimensions, equations, and clue positions deterministically.
 - When the image contains printed choices, use fixed Wayground choices `A/B/C/D`.
 - Set `shuffleQuestions=false` and `shuffleOptions=false` for fixed image-choice quizzes.
 - Create an answer-position plan before finalizing the quiz. Position counts may differ by at most one.

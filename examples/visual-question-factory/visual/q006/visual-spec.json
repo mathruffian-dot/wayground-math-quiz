@@ -1,0 +1,281 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "q006",
+  "title": "漫畫列式判斷",
+  "mode": "ai-composite",
+  "canvas": {
+    "width": 1200,
+    "height": 900,
+    "background": "#f8fafc"
+  },
+  "alt": "四格課堂漫畫中，題意為某數的三倍再加二等於二十，兩位學生提出不同方程式。",
+  "answer": {
+    "optionIds": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "correctOptionId": "B",
+    "unique": true
+  },
+  "provenance": {
+    "provider": "OpenAI built-in image generation",
+    "prompt": "Use case: illustration-story\nAsset type: four-panel background for a junior-high Wayground math comic question\nPrimary request: Create a coherent four-panel classroom comic strip with the same two Taiwanese junior-high students discussing a math problem at a desk. Panels should show: noticing a puzzle, trying an idea, comparing two approaches, and reaching a conclusion. Leave every speech bubble completely blank and large enough for deterministic equation text to be overlaid later.\nStyle/medium: polished colorful educational comic, clean line art, expressive but natural characters\nComposition/framing: landscape 4:3 overall canvas, four equal panels in a two-by-two grid, clear white blank speech bubbles, consistent characters and clothing across all panels\nColor palette: bright classroom blue, yellow, coral, white\nConstraints: no readable text, no letters, no numbers, no equations, no logos, no watermark; blank speech bubbles only; mathematical statements will be added later by code\nAvoid: gibberish writing, chalkboard equations, changing character identity, overcrowded panels, embedded answer choices",
+    "generatedAt": "2026-07-24",
+    "notes": "AI only generated the narrative background. All math facts are deterministic overlays."
+  },
+  "lockedFacts": [
+    {
+      "id": "story",
+      "value": "three-times-number-plus-two-is-twenty",
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "girl-equation",
+      "value": "3x+2=20",
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "boy-equation",
+      "value": "3(x+2)=20",
+      "renderedBy": "overlay"
+    },
+    {
+      "id": "judgement",
+      "value": "girl-correct",
+      "renderedBy": "overlay"
+    }
+  ],
+  "review": {
+    "mathChecked": true,
+    "visualChecked": true,
+    "ambiguityChecked": true,
+    "reviewer": "candidate-demo",
+    "notes": "Original public-safe demonstration question."
+  },
+  "layers": [
+    {
+      "type": "image",
+      "path": "background-ai.png",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 900,
+      "fit": "cover"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 45,
+      "text": "某數的3倍再加2，結果是20。",
+      "fontSize": 24,
+      "fill": "#111827",
+      "maxWidth": 245,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 340,
+      "y": 45,
+      "text": "設未知數為 x。",
+      "fontSize": 26,
+      "fill": "#111827",
+      "maxWidth": 220,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 635,
+      "y": 45,
+      "text": "女生：先乘3，再加2。",
+      "fontSize": 24,
+      "fill": "#111827",
+      "maxWidth": 245,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 930,
+      "y": 45,
+      "text": "男生：先加2，再乘3。",
+      "fontSize": 24,
+      "fill": "#111827",
+      "maxWidth": 230,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 45,
+      "y": 505,
+      "text": "女生：3x + 2 = 20",
+      "fontSize": 24,
+      "fill": "#111827",
+      "maxWidth": 250,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 340,
+      "y": 505,
+      "text": "男生：3(x + 2) = 20",
+      "fontSize": 23,
+      "fill": "#111827",
+      "maxWidth": 245,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 635,
+      "y": 505,
+      "text": "哪一個列式符合題意？",
+      "fontSize": 23,
+      "fill": "#111827",
+      "maxWidth": 245,
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 930,
+      "y": 505,
+      "text": "請選出正確判斷。",
+      "fontSize": 24,
+      "fill": "#111827",
+      "maxWidth": 220,
+      "weight": "bold"
+    },
+    {
+      "type": "rect",
+      "x": 35,
+      "y": 755,
+      "width": 1130,
+      "height": 130,
+      "fill": "#ffffffee",
+      "radius": 18,
+      "stroke": "#2563eb",
+      "strokeWidth": 4
+    },
+    {
+      "type": "text",
+      "x": 600,
+      "y": 775,
+      "text": "誰列的一元一次方程式正確？",
+      "fontSize": 24,
+      "fill": "#1e40af",
+      "anchor": "center",
+      "weight": "bold"
+    },
+    {
+      "type": "circle",
+      "x": 90,
+      "y": 842,
+      "radius": 20,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 90,
+      "y": 842,
+      "text": "A",
+      "fontSize": 23,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 125,
+      "y": 842,
+      "text": "兩人都正確",
+      "fontSize": 25,
+      "fill": "#172033",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "circle",
+      "x": 365,
+      "y": 842,
+      "radius": 20,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 365,
+      "y": 842,
+      "text": "B",
+      "fontSize": 23,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 400,
+      "y": 842,
+      "text": "女生正確",
+      "fontSize": 25,
+      "fill": "#172033",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "circle",
+      "x": 640,
+      "y": 842,
+      "radius": 20,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 640,
+      "y": 842,
+      "text": "C",
+      "fontSize": 23,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 675,
+      "y": 842,
+      "text": "男生正確",
+      "fontSize": 25,
+      "fill": "#172033",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "circle",
+      "x": 915,
+      "y": 842,
+      "radius": 20,
+      "fill": "#6c4df6"
+    },
+    {
+      "type": "text",
+      "x": 915,
+      "y": 842,
+      "text": "D",
+      "fontSize": 23,
+      "fill": "#ffffff",
+      "anchor": "center",
+      "valign": "middle",
+      "weight": "bold"
+    },
+    {
+      "type": "text",
+      "x": 950,
+      "y": 842,
+      "text": "兩人都錯",
+      "fontSize": 25,
+      "fill": "#172033",
+      "valign": "middle",
+      "weight": "bold"
+    }
+  ]
+}

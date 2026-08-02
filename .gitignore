@@ -50,3 +50,4 @@ output/
 evidence/
 publication-evidence.json
 publication-verification.json
+/sharing/generated/
