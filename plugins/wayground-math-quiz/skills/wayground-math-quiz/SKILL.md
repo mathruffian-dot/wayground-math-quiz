@@ -1,6 +1,6 @@
 ---
 name: wayground-math-quiz
-description: Build reproducible Wayground math quizzes from Word/PDF papers or original visual questions, including deterministic diagrams, image answer options, and AI-background narrative puzzles with locked math overlays. Use when an agent needs to ingest or crop a source paper, design a visual-spec, compose and validate question images, balance answers, preview a canonical quiz.json, export a sharing package, or publish through a Wayground connector or logged-in browser.
+description: Build reproducible Wayground math quizzes from Word/PDF papers or original visual questions, including deterministic diagrams, image answer options, and AI-background narrative puzzles with locked math overlays. Use when an agent needs to ingest or crop a source paper, design a visual-spec, compose and validate question images, balance answers, preview a canonical quiz.json, export a sharing package, or publish through a Wayground connector or logged-in browser. 觸發詞（中文）：「做 Wayground 測驗」「把考卷變成 Wayground」「出 Wayground 題目」「Wayground 數學測驗」。
 ---
 
 # Wayground Math Quiz
